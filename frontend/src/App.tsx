@@ -3,6 +3,7 @@ import WalletConnect from "./components/WalletConnect";
 import InitializeForm from "./components/InitializeForm";
 import DistributeForm from "./components/DistributeForm";
 import CollaboratorTable from "./components/CollaboratorTable";
+import { TransactionHistory } from "./components/TransactionHistory";
 
 export default function App() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
@@ -38,6 +39,7 @@ export default function App() {
             onSuccess={() => setRefreshKey((k) => k + 1)}
           />
           <CollaboratorTable contractId={contractId} refreshKey={refreshKey} />
+          {contractId && <TransactionHistory contractId={contractId} />}
         </>
       )}
     </div>

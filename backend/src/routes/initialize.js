@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { buildTx, addressToScVal, u32ToScVal, vecToScVal } from "../stellar.js";
+import { recordTransaction, addAuditLog } from "../database.js";
 
 export const initializeRouter = Router();
 
 /**
  * POST /api/initialize
  * Body: { contractId, walletAddress, collaborators: string[], shares: number[] }
- * Returns: { xdr } — unsigned transaction XDR for the frontend to sign & submit
+ * Returns: { xdr, transactionId } — unsigned transaction XDR for the frontend to sign & submit + tracking ID
  */
 initializeRouter.post("/", async (req, res, next) => {
   try {
@@ -32,6 +33,14 @@ initializeRouter.post("/", async (req, res, next) => {
         .json({ error: `Shares must sum to 10000 bp (got ${total}).` });
     }
 
+    // Record transaction in database for audit trail
+    const transactionId = recordTransaction(
+      contractId,
+      "initialize",
+      walletAddress,
+      { collaboratorCount: collaborators.length },
+    );
+
     const collaboratorVec = vecToScVal(collaborators.map(addressToScVal));
     const sharesVec = vecToScVal(shares.map(u32ToScVal));
 
@@ -40,7 +49,14 @@ initializeRouter.post("/", async (req, res, next) => {
       sharesVec,
     ]);
 
-    res.json({ xdr: txXdr });
+    // Log the initialization
+    addAuditLog(contractId, "contract_initialized", walletAddress, {
+      transactionId,
+      collaboratorCount: collaborators.length,
+      shares,
+    });
+
+    res.json({ xdr: txXdr, transactionId });
   } catch (err) {
     next(err);
   }
