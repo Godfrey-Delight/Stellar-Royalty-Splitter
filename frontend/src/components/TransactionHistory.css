@@ -1,0 +1,212 @@
+.transaction-history {
+  padding: 20px;
+  border-radius: 8px;
+  background: #f9fafb;
+  margin-top: 20px;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.history-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.history-header button {
+  padding: 8px 16px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.history-header button:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.history-header button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.error-message {
+  padding: 12px 16px;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.transactions-table {
+  overflow-x: auto;
+  margin-bottom: 20px;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+.transactions-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.transactions-table thead {
+  background: #f3f4f6;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.transactions-table thead th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.transactions-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background 0.2s;
+}
+
+.transactions-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.transactions-table tbody td {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.tx-type {
+  display: inline-block;
+  padding: 4px 8px;
+  background: #dbeafe;
+  color: #1e40af;
+  border-radius: 3px;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.tx-hash-cell {
+  font-family: "Monaco", "Courier New", monospace;
+  font-size: 12px;
+  cursor: pointer;
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
+.tx-hash-cell:hover {
+  color: #2563eb;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.pagination button {
+  padding: 6px 12px;
+  background: #e5e7eb;
+  color: #1f2937;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: #d1d5db;
+}
+
+.pagination button:disabled {
+  background: #f3f4f6;
+  color: #d1d5db;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .transaction-history {
+    padding: 16px;
+  }
+
+  .transactions-table table {
+    font-size: 12px;
+  }
+
+  .transactions-table thead th,
+  .transactions-table tbody td {
+    padding: 8px 12px;
+  }
+
+  .history-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .history-header h2 {
+    font-size: 18px;
+  }
+
+  .history-header button {
+    width: 100%;
+  }
+
+  .pagination {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .pagination button {
+    width: 100%;
+  }
+}
