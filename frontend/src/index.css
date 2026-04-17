@@ -183,3 +183,130 @@ td:last-child {
   color: #64748b;
   font-family: monospace;
 }
+
+/* Secondary Royalty Components Styles */
+.section-divider {
+  margin: 2.5rem 0 1.5rem 0;
+  padding: 1rem 0 0 0;
+  border-top: 2px solid #1e2a3a;
+}
+
+.section-divider h2 {
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+  color: #60a5fa;
+}
+
+.description {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin-bottom: 1rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.input-with-label,
+.input-with-calc {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.input-with-label input,
+.input-with-calc input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.rate-display {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  background: #1e3a5f;
+  color: #60a5fa;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.calc-result {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  background: #14532d;
+  color: #86efac;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.stats-summary {
+  background: #1a2332;
+  border: 1px solid #1e2a3a;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #60a5fa;
+}
+
+.message {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.message.ok {
+  background: #14532d;
+  color: #86efac;
+  border: 1px solid #22c55e;
+}
+
+.message.error {
+  background: #450a0a;
+  color: #fca5a5;
+  border: 1px solid #ef4444;
+}
+
+.message.info {
+  background: #1e3a5f;
+  color: #93c5fd;
+  border: 1px solid #3b82f6;
+}
+
+small {
+  display: block;
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}

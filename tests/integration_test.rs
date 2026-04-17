@@ -50,6 +50,140 @@ fn test_three_way_split() {
 }
 
 #[test]
+fn test_secondary_royalty_rate_setting() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register_contract(None, stellar_royalty_splitter::RoyaltySplitter);
+    let splitter = RoyaltySplitterClient::new(&env, &contract_id);
+
+    // Initialize collaborators first
+    let artist = Address::generate(&env);
+    let musician = Address::generate(&env);
+    splitter.initialize(
+        &vec![&env, artist.clone(), musician.clone()],
+        &vec![&env, 6_000u32, 4_000u32],
+    );
+
+    // Set royalty rate to 10% (1000 bp)
+    splitter.set_royalty_rate(&1_000u32);
+
+    // Verify rate was set
+    assert_eq!(splitter.get_royalty_rate(), 1_000u32);
+}
+
+#[test]
+fn test_record_secondary_royalty() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    // Deploy test token
+    let token_admin_addr = Address::generate(&env);
+    let token_id = env.register_stellar_asset_contract(token_admin_addr.clone());
+
+    // Setup splitter
+    let contract_id = env.register_contract(None, stellar_royalty_splitter::RoyaltySplitter);
+    let splitter = RoyaltySplitterClient::new(&env, &contract_id);
+
+    let artist = Address::generate(&env);
+    let musician = Address::generate(&env);
+    splitter.initialize(
+        &vec![&env, artist.clone(), musician.clone()],
+        &vec![&env, 6_000u32, 4_000u32],
+    );
+
+    // Set 10% secondary royalty rate
+    splitter.set_royalty_rate(&1_000u32);
+
+    // Record a secondary sale: 1000 stroops * 10% = 100 stroops royalty
+    let royalty = splitter.record_secondary_royalty(&1_000i128);
+    assert_eq!(royalty, 100i128);
+
+    // Verify pool increased
+    let pool = splitter.get_secondary_royalty_pool();
+    assert_eq!(pool, 100i128);
+}
+
+#[test]
+fn test_secondary_royalty_accumulation() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    // Deploy test token
+    let token_admin_addr = Address::generate(&env);
+    let token_id = env.register_stellar_asset_contract(token_admin_addr.clone());
+    let token_admin = token::StellarAssetClient::new(&env, &token_id);
+
+    // Setup splitter
+    let contract_id = env.register_contract(None, stellar_royalty_splitter::RoyaltySplitter);
+    let splitter = RoyaltySplitterClient::new(&env, &contract_id);
+
+    let artist = Address::generate(&env);
+    let musician = Address::generate(&env);
+    splitter.initialize(
+        &vec![&env, artist.clone(), musician.clone()],
+        &vec![&env, 6_000u32, 4_000u32],
+    );
+
+    // Set 5% secondary royalty rate
+    splitter.set_royalty_rate(&500u32);
+
+    // Record multiple secondary sales
+    let r1 = splitter.record_secondary_royalty(&1_000i128);
+    let r2 = splitter.record_secondary_royalty(&2_000i128);
+    let r3 = splitter.record_secondary_royalty(&3_000i128);
+
+    // Verify accumulated pool
+    let expected_total = r1 + r2 + r3;
+    assert_eq!(splitter.get_secondary_royalty_pool(), expected_total);
+    assert_eq!(expected_total, 300i128); // 1000 * 0.05 + 2000 * 0.05 + 3000 * 0.05 = 300
+}
+
+#[test]
+fn test_secondary_royalty_distribution() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    // Deploy test token
+    let token_admin_addr = Address::generate(&env);
+    let token_id = env.register_stellar_asset_contract(token_admin_addr.clone());
+    let token_admin = token::StellarAssetClient::new(&env, &token_id);
+    let token_client = token::Client::new(&env, &token_id);
+
+    // Setup splitter
+    let contract_id = env.register_contract(None, stellar_royalty_splitter::RoyaltySplitter);
+    let splitter = RoyaltySplitterClient::new(&env, &contract_id);
+
+    let artist = Address::generate(&env);
+    let musician = Address::generate(&env);
+    splitter.initialize(
+        &vec![&env, artist.clone(), musician.clone()],
+        &vec![&env, 6_000u32, 4_000u32],
+    );
+
+    // Set 10% secondary royalty
+    splitter.set_royalty_rate(&1_000u32);
+
+    // Record secondary sales that accumulate 1000 in the pool
+    splitter.record_secondary_royalty(&5_000i128);
+    splitter.record_secondary_royalty(&5_000i128);
+    // Pool should be 1000 (10% of 10000)
+
+    // Fund contract with the pool amount
+    mint(&env, &token_admin, &contract_id, 1_000);
+
+    // Distribute secondary royalties
+    splitter.distribute_secondary_royalties(&token_id);
+
+    // Verify distribution: 60% to artist, 40% to musician
+    assert_eq!(token_client.balance(&artist), 600);
+    assert_eq!(token_client.balance(&musician), 400);
+
+    // Pool should be reset
+    assert_eq!(splitter.get_secondary_royalty_pool(), 0i128);
+}
+
+#[test]
 fn test_rounding_dust_goes_to_last_collaborator() {
     let env = Env::default();
     env.mock_all_auths();

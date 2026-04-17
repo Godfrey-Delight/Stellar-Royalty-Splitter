@@ -9,9 +9,12 @@ use soroban_sdk::{
 
 #[contracttype]
 pub enum DataKey {
-    Collaborators,  // Vec<Address>
-    Shares,         // Map<Address, u32>  (basis points, sum == 10_000)
+    Collaborators,              // Vec<Address>
+    Shares,                     // Map<Address, u32>  (basis points, sum == 10_000)
     Initialized,
+    RoyaltyRate,                // u32 (basis points for secondary sales)
+    SecondaryRoyaltyPool,       // i128 (accumulated secondary royalty funds)
+    LastSecondaryDistribution,  // u64 (timestamp of last secondary distribution)
 }
 
 // ── Contract ─────────────────────────────────────────────────────────────────
@@ -99,6 +102,121 @@ impl RoyaltySplitter {
 
             distributed += payout;
         }
+    }
+
+    // ── Secondary Royalty Functions ──────────────────────────────────────────
+
+    /// Set the secondary royalty rate (in basis points).
+    /// 1000 bp = 10% royalty on resales.
+    /// Only callable during initialization or by authorized party.
+    pub fn set_royalty_rate(env: Env, rate_bp: u32) {
+        assert!(rate_bp <= 10_000, "royalty rate cannot exceed 100%");
+        
+        // Store the royalty rate
+        env.storage()
+            .instance()
+            .set(&DataKey::RoyaltyRate, &rate_bp);
+    }
+
+    /// Get the current secondary royalty rate in basis points.
+    pub fn get_royalty_rate(env: Env) -> u32 {
+        env.storage()
+            .instance()
+            .get(&DataKey::RoyaltyRate)
+            .unwrap_or(0)
+    }
+
+    /// Record a secondary (resale) royalty payment.
+    /// This accumulates funds in the secondary royalty pool.
+    /// Can be called by a marketplace or user when NFT is resold.
+    pub fn record_secondary_royalty(env: Env, sale_price: i128) -> i128 {
+        assert!(sale_price > 0, "sale price must be positive");
+
+        let rate_bp = env.storage()
+            .instance()
+            .get(&DataKey::RoyaltyRate)
+            .unwrap_or(0) as i128;
+
+        // Calculate royalty: sale_price * rate_bp / 10_000
+        let royalty_amount = (sale_price * rate_bp) / 10_000;
+
+        if royalty_amount > 0 {
+            // Accumulate in secondary pool
+            let current_pool: i128 = env.storage()
+                .instance()
+                .get(&DataKey::SecondaryRoyaltyPool)
+                .unwrap_or(0);
+            
+            let new_pool = current_pool + royalty_amount;
+            env.storage()
+                .instance()
+                .set(&DataKey::SecondaryRoyaltyPool, &new_pool);
+        }
+
+        royalty_amount
+    }
+
+    /// Distribute accumulated secondary royalties among collaborators.
+    /// Splits the secondary royalty pool according to primary shares.
+    pub fn distribute_secondary_royalties(env: Env, token: Address) {
+        let pool: i128 = env.storage()
+            .instance()
+            .get(&DataKey::SecondaryRoyaltyPool)
+            .unwrap_or(0);
+
+        assert!(pool > 0, "no secondary royalties to distribute");
+
+        let collaborators: Vec<Address> = env
+            .storage()
+            .instance()
+            .get(&DataKey::Collaborators)
+            .expect("not initialized");
+
+        let share_map: Map<Address, u32> = env
+            .storage()
+            .instance()
+            .get(&DataKey::Shares)
+            .expect("not initialized");
+
+        let token_client = token::Client::new(&env, &token);
+
+        let mut distributed: i128 = 0;
+        let last_index = collaborators.len() - 1;
+
+        for (i, addr) in collaborators.iter().enumerate() {
+            let bp = share_map.get(addr.clone()).unwrap() as i128;
+
+            // Last collaborator receives remainder to absorb rounding
+            let payout = if i as u32 == last_index {
+                pool - distributed
+            } else {
+                pool * bp / 10_000
+            };
+
+            if payout > 0 {
+                token_client.transfer(&env.current_contract_address(), &addr, &payout);
+            }
+
+            distributed += payout;
+        }
+
+        // Reset the secondary royalty pool after distribution
+        env.storage()
+            .instance()
+            .set(&DataKey::SecondaryRoyaltyPool, &0);
+
+        // Update last distribution timestamp
+        env.storage()
+            .instance()
+            .set(&DataKey::LastSecondaryDistribution, &env.ledger().timestamp());
+    }
+
+    /// Get accumulated secondary royalties waiting for distribution.
+    pub fn get_secondary_royalty_pool(env: Env) -> i128 {
+        env.storage()
+            .instance()
+            .get(&DataKey::SecondaryRoyaltyPool)
+            .unwrap_or(0)
     }
 
     // ── View helpers ─────────────────────────────────────────────────────────

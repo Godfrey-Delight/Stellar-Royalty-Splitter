@@ -51,6 +51,29 @@ export interface AuditLogEntry {
   timestamp: string;
 }
 
+export interface SecondarySale {
+  id: number;
+  nftId: string;
+  previousOwner: string;
+  newOwner: string;
+  salePrice: string;
+  saleToken: string;
+  royaltyAmount: string;
+  royaltyRate: number;
+  timestamp: string;
+  transactionHash: string | null;
+}
+
+export interface RoyaltyStats {
+  totalSecondarySales: number;
+  totalRoyaltiesGenerated: number | string;
+  lastDistribution: {
+    timestamp: string;
+    totalRoyaltiesDistributed: string;
+    numberOfSales: number;
+  } | null;
+}
+
 export const api = {
   initialize: (body: {
     contractId: string;
@@ -109,4 +132,75 @@ export const api = {
     },
   ) =>
     post<{ success: boolean; message: string }>(`/audit/${contractId}`, body),
+
+  // Secondary Royalty APIs
+  recordSecondarySale: (body: {
+    contractId: string;
+    walletAddress: string;
+    nftId: string;
+    previousOwner: string;
+    newOwner: string;
+    salePrice: number;
+    saleToken: string;
+    royaltyRate: number;
+  }) =>
+    post<{ xdr: string; transactionId: number; royaltyAmount: number }>(
+      "/secondary-royalty",
+      body,
+    ),
+
+  setRoyaltyRate: (body: {
+    contractId: string;
+    walletAddress: string;
+    royaltyRate: number;
+  }) =>
+    post<{ xdr: string; transactionId: number }>(
+      "/secondary-royalty/set-rate",
+      body,
+    ),
+
+  distributeSecondaryRoyalties: (body: {
+    contractId: string;
+    walletAddress: string;
+    tokenId: string;
+  }) =>
+    post<{
+      xdr: string;
+      transactionId: number;
+      numberOfSales: number;
+      totalRoyalties: string;
+    }>("/secondary-royalty/distribute", body),
+
+  getRoyaltyStats: (contractId: string) =>
+    get<RoyaltyStats>(`/secondary-royalty/stats/${contractId}`),
+
+  getSecondarySales: (
+    contractId: string,
+    limit = 50,
+    offset = 0,
+    nftId?: string,
+  ) =>
+    get<{ sales: SecondarySale[]; total: number }>(
+      `/secondary-royalty/sales/${contractId}?limit=${limit}&offset=${offset}${nftId ? `&nftId=${nftId}` : ""}`,
+    ),
+
+  getSecondaryRoyaltyDistributions: (
+    contractId: string,
+    limit = 50,
+    offset = 0,
+  ) =>
+    get<{
+      distributions: Array<{
+        id: number;
+        transactionId: number;
+        totalRoyaltiesDistributed: string;
+        numberOfSales: number;
+        timestamp: string;
+        txHash: string | null;
+        status: string;
+        initiatorAddress: string;
+      }>;
+    }>(
+      `/secondary-royalty/distributions/${contractId}?limit=${limit}&offset=${offset}`,
+    ),
 };

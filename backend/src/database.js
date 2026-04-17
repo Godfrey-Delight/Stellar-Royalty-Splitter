@@ -15,7 +15,7 @@ export function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       txHash TEXT UNIQUE,
       contractId TEXT NOT NULL,
-      type TEXT NOT NULL CHECK(type IN ('initialize', 'distribute')),
+      type TEXT NOT NULL CHECK(type IN ('initialize', 'distribute', 'secondary_royalty', 'secondary_distribute')),
       initiatorAddress TEXT NOT NULL,
       requestedAmount TEXT,
       tokenId TEXT,
@@ -33,6 +33,30 @@ export function initializeDatabase() {
       FOREIGN KEY(transactionId) REFERENCES transactions(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS secondary_sales (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      contractId TEXT NOT NULL,
+      nftId TEXT NOT NULL,
+      previousOwner TEXT NOT NULL,
+      newOwner TEXT NOT NULL,
+      salePrice TEXT NOT NULL,
+      saleToken TEXT NOT NULL,
+      royaltyAmount TEXT NOT NULL,
+      royaltyRate INTEGER NOT NULL,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      transactionHash TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS secondary_royalty_distributions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      transactionId INTEGER NOT NULL,
+      contractId TEXT NOT NULL,
+      totalRoyaltiesDistributed TEXT NOT NULL,
+      numberOfSales INTEGER NOT NULL,
+      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(transactionId) REFERENCES transactions(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS audit_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       contractId TEXT NOT NULL,
@@ -45,6 +69,10 @@ export function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_transactions_contractId ON transactions(contractId);
     CREATE INDEX IF NOT EXISTS idx_transactions_txHash ON transactions(txHash);
     CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
+    CREATE INDEX IF NOT EXISTS idx_secondary_sales_contractId ON secondary_sales(contractId);
+    CREATE INDEX IF NOT EXISTS idx_secondary_sales_nftId ON secondary_sales(nftId);
+    CREATE INDEX IF NOT EXISTS idx_secondary_sales_timestamp ON secondary_sales(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_secondary_distributions_contractId ON secondary_royalty_distributions(contractId);
     CREATE INDEX IF NOT EXISTS idx_audit_contractId ON audit_log(contractId);
     CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp);
   `);
@@ -199,6 +227,152 @@ export function addAuditLog(contractId, action, user, details) {
   `);
 
   stmt.run(contractId, action, user, JSON.stringify(details));
+}
+
+// ── Secondary Royalty Functions ──────────────────────────────────────────
+
+/**
+ * Record a secondary (resale) transaction for an NFT.
+ * Returns the secondary sale record ID.
+ */
+export function recordSecondarySale(
+  contractId,
+  nftId,
+  previousOwner,
+  newOwner,
+  salePrice,
+  saleToken,
+  royaltyAmount,
+  royaltyRate,
+  transactionHash = null
+) {
+  const stmt = db.prepare(`
+    INSERT INTO secondary_sales 
+    (contractId, nftId, previousOwner, newOwner, salePrice, saleToken, royaltyAmount, royaltyRate, transactionHash)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const result = stmt.run(
+    contractId,
+    nftId,
+    previousOwner,
+    newOwner,
+    salePrice.toString(),
+    saleToken,
+    royaltyAmount.toString(),
+    royaltyRate,
+    transactionHash
+  );
+  return result.lastInsertRowid;
+}
+
+/**
+ * Get all secondary sales for a contract with optional filtering.
+ */
+export function getSecondarySales(contractId, limit = 50, offset = 0, nftId = null) {
+  let query = `
+    SELECT 
+      id,
+      nftId,
+      previousOwner,
+      newOwner,
+      salePrice,
+      saleToken,
+      royaltyAmount,
+      royaltyRate,
+      timestamp,
+      transactionHash
+    FROM secondary_sales
+    WHERE contractId = ?
+  `;
+  const params = [contractId];
+
+  if (nftId) {
+    query += ` AND nftId = ?`;
+    params.push(nftId);
+  }
+
+  query += ` ORDER BY timestamp DESC LIMIT ? OFFSET ?`;
+  params.push(limit, offset);
+
+  const stmt = db.prepare(query);
+  return stmt.all(...params);
+}
+
+/**
+ * Record a secondary royalty distribution transaction.
+ */
+export function recordSecondaryRoyaltyDistribution(
+  transactionId,
+  contractId,
+  totalRoyaltiesDistributed,
+  numberOfSales
+) {
+  const stmt = db.prepare(`
+    INSERT INTO secondary_royalty_distributions 
+    (transactionId, contractId, totalRoyaltiesDistributed, numberOfSales)
+    VALUES (?, ?, ?, ?)
+  `);
+
+  return stmt.run(
+    transactionId,
+    contractId,
+    totalRoyaltiesDistributed.toString(),
+    numberOfSales
+  );
+}
+
+/**
+ * Get secondary royalty distribution history for a contract.
+ */
+export function getSecondaryRoyaltyDistributions(contractId, limit = 50, offset = 0) {
+  const stmt = db.prepare(`
+    SELECT 
+      srd.id,
+      srd.transactionId,
+      srd.totalRoyaltiesDistributed,
+      srd.numberOfSales,
+      srd.timestamp,
+      t.txHash,
+      t.status,
+      t.initiatorAddress
+    FROM secondary_royalty_distributions srd
+    LEFT JOIN transactions t ON srd.transactionId = t.id
+    WHERE srd.contractId = ?
+    ORDER BY srd.timestamp DESC
+    LIMIT ? OFFSET ?
+  `);
+
+  return stmt.all(contractId, limit, offset);
+}
+
+/**
+ * Get royalty statistics for a contract.
+ */
+export function getRoyaltyStatistics(contractId) {
+  const totalSalesStmt = db.prepare(`
+    SELECT COUNT(*) as count, SUM(CAST(royaltyAmount as REAL)) as totalRoyalties
+    FROM secondary_sales
+    WHERE contractId = ?
+  `);
+
+  const totalSales = totalSalesStmt.get(contractId);
+
+  const lastDistributionStmt = db.prepare(`
+    SELECT timestamp, totalRoyaltiesDistributed, numberOfSales
+    FROM secondary_royalty_distributions
+    WHERE contractId = ?
+    ORDER BY timestamp DESC
+    LIMIT 1
+  `);
+
+  const lastDistribution = lastDistributionStmt.get(contractId);
+
+  return {
+    totalSecondarySales: totalSales?.count || 0,
+    totalRoyaltiesGenerated: totalSales?.totalRoyalties || 0,
+    lastDistribution: lastDistribution || null
+  };
 }
 
 export default db;
