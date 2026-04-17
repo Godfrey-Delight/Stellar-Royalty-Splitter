@@ -6,12 +6,14 @@ interface Props {
   contractId: string;
   walletAddress: string;
   onSuccess: () => void;
+  onRateUpdate?: (rate: number) => void;
 }
 
 export default function SecondaryRoyaltyConfig({
   contractId,
   walletAddress,
   onSuccess,
+  onRateUpdate,
 }: Props) {
   const [royaltyRate, setRoyaltyRate] = useState<string>("500"); // Default 5%
   const [status, setStatus] = useState<{
@@ -54,6 +56,10 @@ export default function SecondaryRoyaltyConfig({
       });
 
       onSuccess();
+      // Update parent component with new rate
+      if (onRateUpdate) {
+        onRateUpdate(rate);
+      }
     } catch (err) {
       setStatus({
         type: "error",

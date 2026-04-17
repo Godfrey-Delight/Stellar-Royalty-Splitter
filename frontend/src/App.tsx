@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import WalletConnect from "./components/WalletConnect";
 import InitializeForm from "./components/InitializeForm";
 import DistributeForm from "./components/DistributeForm";
@@ -14,6 +14,18 @@ export default function App() {
   const [contractId, setContractId] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [royaltyRate, setRoyaltyRate] = useState(500); // Default 5%
+
+  // Load royalty stats when contract changes to get current rate
+  useEffect(() => {
+    if (!contractId) {
+      setRoyaltyRate(500); // Reset to default if no contract
+      return;
+    }
+
+    // For now, keep using the local state. In a future enhancement,
+    // add an API endpoint to fetch the current royalty rate from the contract.
+    // The rate will update when SecondaryRoyaltyConfig successfully sets it.
+  }, [contractId]);
 
   return (
     <div className="container">
@@ -53,6 +65,7 @@ export default function App() {
             contractId={contractId}
             walletAddress={walletAddress}
             onSuccess={() => setRefreshKey((k) => k + 1)}
+            onRateUpdate={setRoyaltyRate}
           />
 
           <RecordSecondarySale
