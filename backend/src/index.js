@@ -8,6 +8,7 @@ import { distributeRouter } from "./routes/distribute.js";
 import { collaboratorsRouter } from "./routes/collaborators.js";
 import { secondaryRoyaltyRouter } from "./routes/secondary-royalty.js";
 import historyRouter from "./routes/history.js";
+import { analyticsRouter } from "./routes/analytics.js";
 import { initializeDatabase } from "./database.js";
 
 // Initialize database on startup
@@ -22,6 +23,7 @@ app.use("/api/distribute", distributeRouter);
 app.use("/api/collaborators", collaboratorsRouter);
 app.use("/api/secondary-royalty", secondaryRoyaltyRouter);
 app.use("/api", historyRouter);
+app.use("/api", analyticsRouter);
 
 // Health check
 app.get("/api/health", (_req, res) => res.json({ ok: true }));

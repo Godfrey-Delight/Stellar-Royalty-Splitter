@@ -203,4 +203,36 @@ export const api = {
     }>(
       `/secondary-royalty/distributions/${contractId}?limit=${limit}&offset=${offset}`,
     ),
+
+  // Analytics API
+  getAnalytics: (
+    contractId: string,
+    dateRange?: { start: string; end: string },
+  ) =>
+    get<{
+      success: boolean;
+      data: {
+        totalDistributed: number;
+        totalTransactions: number;
+        averagePayout: number;
+        topEarners: Array<{
+          address: string;
+          totalEarned: number;
+          payouts: number;
+        }>;
+        distributionTrends: Array<{
+          date: string;
+          amount: number;
+          count: number;
+        }>;
+        collaboratorStats: Array<{
+          address: string;
+          totalEarned: number;
+          payoutCount: number;
+        }>;
+      };
+      message?: string;
+    }>(
+      `/analytics/${contractId}${dateRange ? `?start=${dateRange.start}&end=${dateRange.end}` : ""}`,
+    ),
 };
