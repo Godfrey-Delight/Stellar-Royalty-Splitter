@@ -138,6 +138,13 @@ export function addDistributionPayout(
   stmt.run(transactionId, collaboratorAddress, amountReceived);
 }
 
+export function getTransactionCount(contractId) {
+  const stmt = db.prepare(
+    `SELECT COUNT(*) as total FROM transactions WHERE contractId = ?`
+  );
+  return stmt.get(contractId).total;
+}
+
 export function getTransactionHistory(contractId, limit = 50, offset = 0) {
   const stmt = db.prepare(`
     SELECT 
