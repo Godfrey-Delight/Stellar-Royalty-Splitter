@@ -1,5 +1,5 @@
 import express from "express";
-import { getDatabase } from "./database.js";
+import { getDatabase } from "../database.js";
 
 const router = express.Router();
 
@@ -13,6 +13,17 @@ router.get("/analytics/:contractId", (req, res) => {
     // Parse date range
     let startDate = start ? new Date(start) : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
     let endDate = end ? new Date(end) : new Date();
+
+    // Validate parsed dates
+    if (start && isNaN(startDate.getTime())) {
+      return res.status(400).json({ success: false, error: "Invalid start date. Use YYYY-MM-DD." });
+    }
+    if (end && isNaN(endDate.getTime())) {
+      return res.status(400).json({ success: false, error: "Invalid end date. Use YYYY-MM-DD." });
+    }
+    if (start && end && startDate > endDate) {
+      return res.status(400).json({ success: false, error: "start date must be before end date." });
+    }
 
     // Get all transactions for the contract in the date range
     const transactions = db
