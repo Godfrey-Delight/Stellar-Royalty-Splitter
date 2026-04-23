@@ -222,8 +222,11 @@ secondaryRoyaltyRouter.post("/distribute", async (req, res, next) => {
 
 /**
  * GET /api/secondary-royalty/stats/:contractId
- * Returns royalty statistics for a contract
+ * Returns royalty statistics for a contract.
+ * Results are cached in-memory for 60 seconds to avoid hammering the DB.
  */
+const statsCache = new Map(); // key: contractId, value: { data, expiresAt }
+
 secondaryRoyaltyRouter.get("/stats/:contractId", (req, res, next) => {
   try {
     const { contractId } = req.params;
@@ -232,7 +235,13 @@ secondaryRoyaltyRouter.get("/stats/:contractId", (req, res, next) => {
       return res.status(400).json({ error: "Contract ID is required." });
     }
 
+    const cached = statsCache.get(contractId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return res.json(cached.data);
+    }
+
     const stats = getRoyaltyStatistics(contractId);
+    statsCache.set(contractId, { data: stats, expiresAt: Date.now() + 60_000 });
 
     res.json(stats);
   } catch (err) {
