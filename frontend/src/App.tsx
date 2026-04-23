@@ -23,11 +23,16 @@ import DistributeSecondaryRoyalties from "./components/DistributeSecondaryRoyalt
 import ResaleHistory from "./components/ResaleHistory";
 import "./App.css";
 
+function isValidContractId(id: string): boolean {
+  return id.startsWith("C") && id.length === 56;
+}
+
 export default function App() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [contractId, setContractId] = useState(
     () => localStorage.getItem("lastContractId") ?? ""
   );
+  const [contractIdError, setContractIdError] = useState<string | null>(null);
   const [royaltyRate, setRoyaltyRate] = useState(500); // Default 5%
   const [currentPage, setCurrentPage] = useState("dashboard");
 
@@ -48,9 +53,18 @@ export default function App() {
 
   function handleContractChange(value: string) {
     setContractId(value);
-    if (value) localStorage.setItem("lastContractId", value);
-    else localStorage.removeItem("lastContractId");
+    if (!value) {
+      setContractIdError(null);
+      localStorage.removeItem("lastContractId");
+    } else if (!isValidContractId(value)) {
+      setContractIdError("Contract ID must start with C and be 56 characters");
+    } else {
+      setContractIdError(null);
+      localStorage.setItem("lastContractId", value);
+    }
   }
+
+  const contractIdValid = isValidContractId(contractId);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -170,14 +184,17 @@ export default function App() {
           <div className="sidebar-card">
             <h3>📋 Contract ID</h3>
             <input
-              className="contract-input"
+              className={`contract-input${contractIdError ? " contract-input--error" : ""}`}
               placeholder="C..."
               value={contractId}
               onChange={(e) => handleContractChange(e.target.value)}
             />
+            {contractIdError && (
+              <p className="contract-input-error">{contractIdError}</p>
+            )}
           </div>
 
-          {contractId && (
+          {contractIdValid && (
             <div className="sidebar-card">
               <h3>📊 Quick Actions</h3>
               <div className="quick-actions">
